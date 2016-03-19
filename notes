@@ -1,0 +1,45 @@
+using mysql, so no conversion is needed
+
+okay, pagelinks only contain single links, and there's no order->we need our own database
+redirects: count as a step, no automatic redir ( at least in first run )
+
+ns: 0
+(from_id,  number_in_page): unique
+
+page
+    id
+    title
+    redirect
+pagelinks
+    title
+    from_id
+    number_in_page
+
+interesting tables:
+https://www.mediawiki.org/wiki/Manual:Page_table                    https://dumps.wikimedia.org/huwiki/20160203/huwiki-20160203-page.sql.gz
+https://www.mediawiki.org/wiki/Manual:Pagelinks_table               https://dumps.wikimedia.org/huwiki/20160203/huwiki-20160203-pagelinks.sql.gz
+
+concentrating on user content, so dismissing pages with non-0 namespace https://www.mediawiki.org/wiki/Manual:Namespace
+
+query is a simple join
+
+SELECT pagelinks.pl_title FROM page INNER JOIN pagelinks ON pagelinks.pl_from=page.page_id AND pagelinks.pl_from_namespace=page.page_namespace WHERE page.page_namespace=0 AND page.page_title="escaped_query_without_namespace";
+
+connector/c
+    https://dev.mysql.com/get/Downloads/Connector-C/mysql-connector-c-6.1.6-src.tar.gz
+connector/c++
+    https://dev.mysql.com/get/Downloads/Connector-C++/mysql-connector-c++-1.1.7.tar.gz
+    sha256: 5b353fbcd26f607a2a0987ce78a4b811f8971813d46b0f4ae6fa07887e9fc763
+xerces-c++
+    http://xenia.sote.hu/ftp/mirrors/www.apache.org//xerces/c/3/sources/xerces-c-3.1.3.tar.gz
+
+ro user:
+    wiki
+    3e6196a6feb44d0d66a67ad27685491f
+
+
+
+improvements:
+    order is not really relevant, number of occurences moreso
+    sections are not handled, it's the same as the whole page; could be per-section
+
