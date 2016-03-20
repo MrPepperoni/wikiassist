@@ -2,6 +2,7 @@ import mwparserfromhell
 import xml.sax
 import MySQLdb
 from collections import defaultdict
+import pycountry
 
 conn = None
 
@@ -27,11 +28,21 @@ namespaces = {
         }
 
 def splitFromNs( title ):
-    pts = title.split( ":", 2)
+    pts = title.lstrip(":").split( ":", 1)
     if len( pts ) < 2:
         return 0, title
     global namespaces
-    return namespaces.get( pts[0].lower(), -3 ), pts[1]
+    nsid = namespaces.get( pts[0].lower(), -3 )
+    if nsid == -3:
+        # if country code: not in-site link, omit it
+        try:
+            if pycountry.languages.get( iso639_1_code=pts[0].lower() ) is not None:
+                return -4, pts[1]
+        except:
+            pass
+        # not x-country link: try in-site. possible todo: check if the page really exists
+        return 0, title
+    return nsid, pts[1]
 
 
 def initDB():
@@ -77,7 +88,6 @@ def getWikiLinks( text ):
     return [ splitFromNs( l[2:-2].split("|",1)[0].split("#")[0] ) for l in wls ]
 
 
-
 class ArticlesHandler( xml.sax.ContentHandler ):
     def __init__( self ):
         self.resetPage()
@@ -97,18 +107,22 @@ class ArticlesHandler( xml.sax.ContentHandler ):
         global conn
         x = conn.cursor()
         try:
-            x.execute("INSERT INTO page VALUES (%s,%s,%s,%s)",(int(self.page_id),int(self.namespace),self.page_title,self.redirect))
+            x.execute("INSERT INTO page VALUES (%s,%s,%s,%s)",(int(self.page_id),int(self.namespace),self.page_title.encode("utf-8"),self.redirect))
             conn.commit()
-        except:
+        except Exception as ex:
+            print "Error at " + self.page_id
+            print ex
             conn.rollback()
 
     def insertPageLinks( self ):
         global conn
         x = conn.cursor()
         try:
-            x.executemany("INSERT INTO pagelinks VALUES (%s,%s,%s,%s,%s)",[ ( int(self.page_id), l[0], l[1], int(self.namespace), ind ) for ind, l in enumerate( self.wikilinks ) ] )
+            x.executemany("INSERT INTO pagelinks VALUES (%s,%s,%s,%s,%s)",[ ( int(self.page_id), l[0], l[1].encode("utf-8"), int(self.namespace), ind ) for ind, l in enumerate( self.wikilinks ) ] )
             conn.commit()
-        except:
+        except Exception as ex:
+            print "Error at links at " + self.page_id
+            print ex
             conn.rollback()
 
     def isPageComplete( self ):
@@ -118,26 +132,18 @@ class ArticlesHandler( xml.sax.ContentHandler ):
             self.text is not None
 
     def skipPage( self ):
-        return self.namespace != "0"
+        return False;
+        #return self.namespace != "0"
 
     def finishPage( self ):
         self.pagecount += 1
-        if self.skipPage():
-            self.resetPage()
-        if self.isPageComplete():
+        if self.isPageComplete() and not self.skipPage():
             self.wikilinks = getWikiLinks( self.text )
             self.insertPage()
             self.insertPageLinks()
-            # print str(self.page_id) + " " + self.page_title
-            # print self.wikilinks
-            # to sql
-            # page: page_id page_title
-            # pagelinks:
-            # for l_title in self.wikilinks:
-            #    pageid indexof( l ) l_title
 
         self.resetPage()
-        if self.pagecount % 100 == 0:
+        if self.pagecount % 10000 == 0:
             print self.pagecount
 
     def startElement( self, name, attrs ):
@@ -145,7 +151,8 @@ class ArticlesHandler( xml.sax.ContentHandler ):
         self.stack.append( name )
 
     def endElement( self, name ):
-        self.stack.pop()
+        if len( self.stack ) > 0:
+            self.stack.pop()
         if name == "page":
             self.finishPage()
         if name == "id" and self.stack[-1] == "page":
@@ -169,12 +176,12 @@ def parseArticlesXml( filename ):
     parser.parse( open( filename, "r" ) )
 
 def main():
+    print "working..."
     initDB()
-    text = "I has [[]] [[ ]]a [[temp:late]]! [[user:foo#dart|bar]] [[See]]ing [[[it?"
-    print getWikiLinks( text )
-    # parseArticlesXml( "huwiki-20160203-pages-articles.xml" )
-    parseArticlesXml( "elwiktionary-20160203-pages-articles.xml" )
+    parseArticlesXml( "huwiki-20160203-pages-articles.xml" )
+    # parseArticlesXml( "elwiktionary-20160203-pages-articles.xml" )
     closeDB()
+    print "done."
 
 if __name__ == "__main__":
     main()

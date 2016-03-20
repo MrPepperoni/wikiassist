@@ -3,6 +3,8 @@ using mysql, so no conversion is needed
 okay, pagelinks only contain single links, and there's no order->we need our own database
 redirects: count as a step, no automatic redir ( at least in first run )
 
+links in templates are not searched
+
 ns: 0
 (from_id,  number_in_page): unique
 
