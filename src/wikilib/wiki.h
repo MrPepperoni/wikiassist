@@ -22,6 +22,7 @@ public:
     /// \brief collects the in-site links referenced from sourceTitle in linkedTitles
     /// \return true on success, false on failure
     bool getLinks( std::string const& sourceTitle, std::vector< ::std::string >& linkedTitles );
+    static std::string normalizeTitle( std::string const& str );
 private:
     class Impl;
     std::unique_ptr<Impl> mImpl;

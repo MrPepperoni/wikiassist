@@ -1,3 +1,5 @@
 add_subdirectory( wikilib )
 add_subdirectory( getlinks )
 add_subdirectory( app1 )
+add_subdirectory( understandinglib )
+add_subdirectory( app2 )

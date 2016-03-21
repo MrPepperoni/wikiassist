@@ -44,8 +44,7 @@ Wiki::Impl::~Impl()
 }
 
 
-namespace {
-std::string normalize( std::string const& str )
+std::string Wiki::normalizeTitle( std::string const& str )
 {
     auto rv = str;
     if( !rv.empty() )
@@ -54,11 +53,10 @@ std::string normalize( std::string const& str )
     }
     return rv;
 }
-}
 
 bool Wiki::Impl::getLinks( std::string const& sourceTitle, std::vector< ::std::string >& linkedTitles )
 {
-    std::string sourceTitleNormalized = normalize( sourceTitle );
+    std::string sourceTitleNormalized = Wiki::normalizeTitle( sourceTitle );
     try
     {
         std::vector< std::string > rv;
