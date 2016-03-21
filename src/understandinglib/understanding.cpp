@@ -119,6 +119,7 @@ struct Worker
         using namespace std::placeholders;
         std::sort( reachedLinksVec.begin(), reachedLinksVec.end(), std::bind( &Worker::compareReachedLinks, this, _1, _2 )  );
         std::list<std::string> reachedLinksList( reachedLinksVec.begin(), reachedLinksVec.end() );
+        reachedLinksList.remove( Wiki::normalizeTitle( sourceTitle ) );
         while( selection.size() < numArticles && !reachedLinksList.empty() )
         {
             for( auto const& title : reachedLinksList )
