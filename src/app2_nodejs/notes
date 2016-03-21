@@ -1,0 +1,3 @@
+needs node, node-gype for building
+set LD_LIBRARY_PATH to include libunderstanding.so before starting node server.js
+

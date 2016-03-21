@@ -1,0 +1,16 @@
+{
+  "name": "app2_nodejs",
+  "version": "0.0.0",
+  "description": "Node.js Addon for getting suggestions",
+  "main": "addon.js",
+  "private": true,
+  "dependencies": {
+    "bindings": "~1.2.1",
+    "nan": "^2.0.0",
+    "express": "~4.13.4"
+  },
+  "scripts": {
+    "test": "nodejs addon.js"
+  },
+  "gypfile": true
+}
