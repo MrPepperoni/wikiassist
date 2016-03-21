@@ -1,0 +1,62 @@
+Data generation:
+    use createdb/populatedb.py using the *-pages-articles.xml dump
+    input filename, mysql db location and credentials can be set in the source file, sorry about that
+    two tables are created and populated, the page and pagelinks tables.
+    the page table contains the page title, id and namespace; it is used for looking up page id from namespace and page title.
+    the pagelinks table contains information about in-site links: the source page id and namespace, the target page title and namespace, and the index of the link on the source page
+    explanation:
+        the sql dumps don't contain information about the order of the links on each page, and the web api for wikipedia might have proven to be too slow (also i wanted to avoid site-crawling it)
+    limitations:
+        the templates are not parsed, and so the links from those aren't followed
+        redirects aren't followed automatically, they take up one page-read
+        namespaces are site-configuration specific, the script only handles the default ones. several localized namespaces (e.g. Wikipédia:, Fájl:, Kép:) are interpreted as part of the title
+
+API description:
+    wikilib:
+        main namespace: wiki
+        access:
+            Create a wiki::ConnectionDesc object, and use that to specify the connection to a MySQL server.
+            Create a wiki::Wiki object using the wiki::ConnectionDesc object.
+        main access function:
+            to get a list of linked titles from any given title, use the
+                bool wiki::Wiki::getLinks( std::string const& sourceTitle, std::vector< ::std::string >& linkedTitles );
+            function.
+            the first arguments is the title of the source page, the linked pages will be stored in the linkedTitles vector.
+            the function returns true on success, false on failure.
+    understandinglib:
+        main namespace: understanding
+        access:
+            the interface depends on the wikilib interface, and works on a wiki::Wiki object
+                std::set<std::string> understanding::getSuggestedTitles( wiki::Wiki& wiki, std::string const& sourceTitle, int numArticles );
+            function.
+            the first argument is a previously described wiki::Wiki object
+            the second argument is the source title that the user needs additional title suggestions for
+            the third argument specifies how many articles the user wants to read ( including the source title )
+            returns a set of titles
+        implementation:
+            the algorithm is a greedy one, and won't necessarily give the best possible coverage.
+            basic steps:
+                collect per-edge weights for each reachable title up to numArticles depth
+                calculate per-node weights for each reached title
+                add the sourceTitle to the selection
+                add the node with the highest value that is reachable from the selection
+                    repeat this step until nothing is reachable or we have covered the requested number of articles
+        improvement:
+            it would be possible to collect per-edge (non-linear) functions for each reachable title, the variables would be wether a title is selected or not ( xi E {0,1} ), with the coefficients calculated similarly to the current implementation, however storing them per-title in a map<string,double>; the key is the dependent xi variables
+            this gives us an understanding function over the {0,1}^(10^numArticles) space ( worst case, with 10 links from each article )
+            finding a maximum for that doesn't seem trivial
+
+
+Applications:
+    note: all applications expect and return the wikipage title as argument.
+    converting those to/from wikipedia links is rather trivial: prepend the https://hu.wikipedia.org/wiki/ to the title, and change all spaces to underscores
+    unfortunately i only noticed the underscore problem after i prepared the db, and it takes quite a while to re-run the python script ( a few hours ), so i didn't bother withi it.
+    The case-sensitivity of the wiki links is rather strange. Wikipedia automatically changes the first character of the title to uppercase, however seems to be case-sensitive inside words ( e.g. Main_Page and main_Page can be found on the hu wiki, however main_page cannot ), the wiki::normalizeTitle function mimics this behaviour
+
+    app1: this application returns the title of one of the closest pages that starts with 'A' character, expects a list of starting titles as argument
+    app2: this application returns the list of suggested titles, expects a list of arguments in the form SourceTitle1 NumArticles1 SourceTitle2 NumArticles2 [...]
+    app2_nodejs: a pretty hastily made node.js addon that uses the understanding library. node-gyp seems to not include the -L parameters in the rpath of the addon, so starting the server.js requires setting the LD_LIBRARY_PATH beforehand. i didn't look for alternative solutions for this in the nick of time.
+
+Improvement ideas for the wiki suggestions:
+    please check wiki_javasolt_cikkek ( in hungarian )
+
